@@ -21,11 +21,6 @@ open class HtmlPdfImpl(
             OutputFormat.PDF  -> "pdf"
         }
 
-    override val contentType: String =
-        when (format) {
-            OutputFormat.HTML -> "text/html"
-            OutputFormat.PDF  -> "application/pdf"
-        }
 
     override val defaultFileExtension: String =
         when (format) {
@@ -50,7 +45,7 @@ open class HtmlPdfImpl(
         sb.appendLine("    body { font-family: sans-serif; font-size: 14px; }")
         sb.appendLine("    h1, h2 { margin: 0 0 0.5em 0; }")
         sb.appendLine("    table { border-collapse: collapse; margin-bottom: 1.5em; }")
-        // th, td bez fiksnog border-a – border ide preko SectionStyle.borderWidth
+
         sb.appendLine("    th, td { padding: 4px 8px; }")
         sb.appendLine("    ul.summary { list-style-type: disc; margin: 0 0 1.5em 1.5em; padding: 0; }")
         sb.appendLine("  </style>")
@@ -58,26 +53,17 @@ open class HtmlPdfImpl(
         sb.appendLine("<body>")
 
         sections.forEachIndexed { index, section ->
-            // 1) primeni izračunate kolone
+            // izračunate kolone
             val dataWithCalculated = applyCalculatedColumns(
                 data = section.data,
                 calculatedColumns = section.calculatedColumns
             )
 
-            // 2) validiraj podatke + summary + calculated
-            val valid = validate(
-                data = dataWithCalculated,
-                summaryItems = section.summaryItems,
-                calculatedColumns = section.calculatedColumns
-            )
-            if (!valid) {
-                throw IllegalArgumentException("Nevalidni podaci ili summary u sekciji '${section.title ?: "bez naslova"}'.")
-            }
 
-            // 3) render title
+            // render title
             renderTitle(sb, section.title, section.style)
 
-            // 4) tabela
+            // tabela
             renderTable(
                 sb = sb,
                 data = dataWithCalculated,
@@ -86,7 +72,7 @@ open class HtmlPdfImpl(
                 showHeader = section.showHeader
             )
 
-            // 5) summary
+            // summary
             renderSummary(
                 sb = sb,
                 summaryItems = section.summaryItems,
@@ -110,7 +96,7 @@ open class HtmlPdfImpl(
         }
     }
 
-    // ========== TITLE ==========
+    // Naslov
 
     override fun renderTitle(
         sb: StringBuilder,
@@ -142,7 +128,7 @@ open class HtmlPdfImpl(
         sb.appendLine("</h2>")
     }
 
-    // ========== TABLE ==========
+    // Tabela
 
     override fun renderTable(
         sb: StringBuilder,
@@ -168,13 +154,13 @@ open class HtmlPdfImpl(
             }
         }
 
-        // ivica za svaku ćeliju (th/td)
+        // ivice
         val cellBorderCss =
             if (borderWidth > 0) "border:${borderWidth}px solid #333;" else ""
 
         sb.append("<table style=\"$tableCss\">").appendLine()
 
-        // HEADER
+        // Header
         if (showHeader) {
             sb.append("  <tr>")
             if (showRowNumbers) {
@@ -194,7 +180,7 @@ open class HtmlPdfImpl(
             sb.appendLine("</tr>")
         }
 
-        // PODACI
+        // Podaci
         for (rowIndex in 0 until rowCount) {
             sb.append("  <tr>")
             if (showRowNumbers) {
@@ -214,7 +200,7 @@ open class HtmlPdfImpl(
         sb.appendLine("</table>")
     }
 
-    // ========== SUMMARY ==========
+    // Summary
 
     override fun renderSummary(
         sb: StringBuilder,
@@ -289,7 +275,7 @@ open class HtmlPdfImpl(
         sb.appendLine("</ul>")
     }
 
-    // ========== POMOĆNE ==========
+    // pomocne funkcije
 
     private fun escapeHtml(text: String): String =
         text

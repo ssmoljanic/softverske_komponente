@@ -4,7 +4,7 @@ import spec.ReportInterface
 
 class DefaultCalculationProvider: ReportInterface.CalculationProvider {
 
-    // Pomoćna funkcija: List<String> -> List<Double>, odbacuje nevalidne vrednosti.
+    // Pomoćna funkcija odbacuje nevalidne vrednosti.
     private fun toNumbers(values: List<String>): List<Double> =
         values.mapNotNull { it.trim().toDoubleOrNull() }
 
@@ -32,7 +32,6 @@ class DefaultCalculationProvider: ReportInterface.CalculationProvider {
     }
 
     override fun count(columnValues: List<String>): Int {
-        // Ovde računamo sve elemente, i prazne stringove.
         return columnValues.size
     }
 

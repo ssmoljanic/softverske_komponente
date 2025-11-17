@@ -12,31 +12,30 @@ import java.nio.file.Paths
 import java.util.ServiceLoader
 
 fun main(args: Array<String>) {
-    // ============= 1. KONFIGURACIJA (default vrednosti) =============
 
-    // format: "txt", "html", "pdf", "markdown" ...
-    var desiredFormat = "markdown"
+    var desiredFormat = "txt"
 
-    // CSV fajl u resources, npr. src/main/resources/data.csv
     var resourceCsvPath = "data.csv"
 
     // opcije prikaza
     var showHeader = true
     var showRowNumbers = true
     var includeSummary = true
-    var includeCalculatedColumns = false
+    var includeCalculatedColumns = true
 
-    // opcije formatiranja (stil)
+    // opcije formatiranja
     var titleBold = true
     var titleItalic = true
     var underline = false
     var headerBold = false
     var borderWidth = 0
 
-    // ============= 2. PARSIRANJE ARGUMENATA =============
 
-    // args[0] = format   (ako nije flag)
-    // args[1] = csv path (ako nije flag)
+    val dynamicSummaryItems = mutableListOf<SummaryItem>()
+
+
+    // args[0] = format
+    // args[1] = csv path
     if (args.isNotEmpty() && !args[0].startsWith("--")) {
         desiredFormat = args[0]
     }
@@ -54,7 +53,7 @@ fun main(args: Array<String>) {
         val arg = args[i]
 
         when {
-            // ----- postojeći funkcionalni flagovi -----
+
             arg == "--no-summary"      -> includeSummary = false
             arg == "--with-summary"    -> includeSummary = true
 
@@ -68,7 +67,7 @@ fun main(args: Array<String>) {
                     arg == "--with-calculated" -> includeCalculatedColumns = true
             arg == "--no-calc"         -> includeCalculatedColumns = false
 
-            // ----- novi flagovi za formatiranje naslova/tabele -----
+
             arg == "--bold"            -> titleBold = true
             arg == "--no-bold"         -> titleBold = false
 
@@ -85,8 +84,79 @@ fun main(args: Array<String>) {
                 borderWidth = value.toIntOrNull() ?: 0
             }
 
+            // summary kalkulacije za proizvoljne kolone
+
+            // --sum=Cena
+            arg.startsWith("--sum=") -> {
+                val col = arg.substringAfter("=")
+                dynamicSummaryItems += SummaryItem(
+                    label = "SUM $col",
+                    calcType = SummaryCalcType.SUM,
+                    columnName = col
+                )
+            }
+
+            // --avg=Plata
+            arg.startsWith("--avg=") -> {
+                val col = arg.substringAfter("=")
+                dynamicSummaryItems += SummaryItem(
+                    label = "AVG $col",
+                    calcType = SummaryCalcType.AVG,
+                    columnName = col
+                )
+            }
+
+            // --min=Cena
+            arg.startsWith("--min=") -> {
+                val col = arg.substringAfter("=")
+                dynamicSummaryItems += SummaryItem(
+                    label = "MIN $col",
+                    calcType = SummaryCalcType.MIN,
+                    columnName = col
+                )
+            }
+
+            // --max=Cena
+            arg.startsWith("--max=") -> {
+                val col = arg.substringAfter("=")
+                dynamicSummaryItems += SummaryItem(
+                    label = "MAX $col",
+                    calcType = SummaryCalcType.MAX,
+                    columnName = col
+                )
+            }
+
+            // --count=Artikal
+            arg.startsWith("--count=") -> {
+                val col = arg.substringAfter("=")
+                dynamicSummaryItems += SummaryItem(
+                    label = "COUNT $col",
+                    calcType = SummaryCalcType.COUNT,
+                    columnName = col
+                )
+            }
+
+            //--countif=Cena:100
+            arg.startsWith("--countif=") -> {
+                val payload = arg.substringAfter("=")      // Cena:100
+                val parts = payload.split(":", limit = 2)  // ["Cena", "100"]
+
+                if (parts.size == 2) {
+                    val col = parts[0]
+                    val cond = parts[1]
+                    dynamicSummaryItems += SummaryItem(
+                        label = "COUNT_IF $col == $cond",
+                        calcType = SummaryCalcType.COUNT_IF,
+                        columnName = col,
+                        conditionValue = cond
+                    )
+                } else {
+                    println("pogrešan format za --countif, ocekivano: --countif=Kolona:Vrednost")
+                }
+            }
+
             else -> {
-                println("Upozorenje: nepoznata opcija '$arg' – preskačem.")
+                println("nepoznata opcija '$arg'")
             }
         }
 
@@ -102,17 +172,17 @@ fun main(args: Array<String>) {
     println(" - includeCalculatedColumns: $includeCalculatedColumns")
     println(" - style: bold=$titleBold, italic=$titleItalic, underline=$underline, headerBold=$headerBold, borderWidth=$borderWidth")
 
-    // ============= 3. UČITAVANJE RENDERA (SPI) =============
+    // Ucitavanje rendera - SPI
 
     val loader: ServiceLoader<ReportInterface> = ServiceLoader.load(ReportInterface::class.java)
     val implementations = loader.toList()
 
     if (implementations.isEmpty()) {
-        println("Nije pronađena nijedna implementacija ReportInterface-a. Proveri SPI (META-INF/services).")
+        println("Nije pronađena nijedna implementacija ReportInterface-a)")
         return
     }
 
-    println("Pronađene implementacije:")
+    println("Pronadjene implementacije:")
     implementations.forEach { impl ->
         println(" - ${impl.implName} (${impl::class.qualifiedName})")
     }
@@ -125,13 +195,13 @@ fun main(args: Array<String>) {
 
     println("Koristim renderer: ${renderer.implName} (${renderer.defaultFileExtension})")
 
-    // ============= 4. ČITANJE CSV-a IZ RESOURCES =============
+    // Citanje CSV-a iz resources
 
     val inputStream = Thread.currentThread()
         .contextClassLoader
         .getResourceAsStream(resourceCsvPath)
         ?: run {
-            println("Nisam našao CSV resource: $resourceCsvPath")
+            println("Ne postoji CSV resource: $resourceCsvPath")
             return
         }
 
@@ -140,7 +210,7 @@ fun main(args: Array<String>) {
     val data: Map<String, List<String>> = renderer.prepareDataFromCsvContent(
         csvContent = csvContent,
         hasHeader = true,
-        delimiter = ';'          // po potrebi promeni delimiter
+        delimiter = ';'
     )
 
     if (data.isEmpty()) {
@@ -148,10 +218,7 @@ fun main(args: Array<String>) {
         return
     }
 
-    println("Kolone u CSV fajlu:")
-    data.keys.forEach { col -> println(" - $col") }
-
-    // ============= 5. IZRAČUNATE KOLONE =============
+    // Izracunate kolone
 
     val calculatedColumns: List<CalculatedColumn> =
         if (includeCalculatedColumns) {
@@ -164,63 +231,75 @@ fun main(args: Array<String>) {
                     )
                 )
             } else {
-                println("Upozorenje: nema kolona 'Cena' i 'Kolicina', preskačem calculated kolone.")
+                println("nema kolona 'Cena' i 'Kolicina'")
                 emptyList()
             }
         } else {
             emptyList()
         }
 
-    // ============= 6. SUMMARY =============
+    // Rezime
 
     val summaryItems: List<SummaryItem> =
         if (includeSummary) {
-            val items = mutableListOf<SummaryItem>()
+            if (dynamicSummaryItems.isNotEmpty()) {
 
-            if (data.containsKey("Cena")) {
-                items += SummaryItem(
-                    label = "Ukupna cena (SUM Cena)",
-                    calcType = SummaryCalcType.SUM,
-                    columnName = "Cena"
-                )
-                items += SummaryItem(
-                    label = "Prosecna cena (AVG Cena)",
-                    calcType = SummaryCalcType.AVG,
-                    columnName = "Cena"
-                )
+                val filtered = dynamicSummaryItems.filter { item ->
+                    item.columnName == null || data.containsKey(item.columnName)
+                }
+                if (filtered.size < dynamicSummaryItems.size) {
+                    println("neke kolone zadate u --sum/--avg/... ne postoje u CSV-u")
+                }
+                filtered
+            } else {
+
+                val items = mutableListOf<SummaryItem>()
+
+                if (data.containsKey("Cena")) {
+                    items += SummaryItem(
+                        label = "Ukupna cena",
+                        calcType = SummaryCalcType.SUM,
+                        columnName = "Cena"
+                    )
+                    items += SummaryItem(
+                        label = "Prosecna cena",
+                        calcType = SummaryCalcType.AVG,
+                        columnName = "Cena"
+                    )
+                }
+
+                if (data.containsKey("Ukupno")) {
+                    items += SummaryItem(
+                        label = "Ukupno (SUM Ukupno)",
+                        calcType = SummaryCalcType.SUM,
+                        columnName = "Ukupno"
+                    )
+                }
+
+                if (data.containsKey("Artikal")) {
+                    items += SummaryItem(
+                        label = "Broj artikala",
+                        calcType = SummaryCalcType.COUNT,
+                        columnName = "Artikal"
+                    )
+                }
+
+                if (data.containsKey("Cena")) {
+                    items += SummaryItem(
+                        label = "Broj sa cenom 100",
+                        calcType = SummaryCalcType.COUNT_IF,
+                        columnName = "Cena",
+                        conditionValue = "100"
+                    )
+                }
+
+                items
             }
-
-            if (data.containsKey("Ukupno")) {
-                items += SummaryItem(
-                    label = "Ukupno (SUM Ukupno)",
-                    calcType = SummaryCalcType.SUM,
-                    columnName = "Ukupno"
-                )
-            }
-
-            if (data.containsKey("Artikal")) {
-                items += SummaryItem(
-                    label = "Broj artikala (COUNT Artikal)",
-                    calcType = SummaryCalcType.COUNT,
-                    columnName = "Artikal"
-                )
-            }
-
-            if (data.containsKey("Cena")) {
-                items += SummaryItem(
-                    label = "Broj sa cenom 100 (COUNT_IF Cena==100)",
-                    calcType = SummaryCalcType.COUNT_IF,
-                    columnName = "Cena",
-                    conditionValue = "100"
-                )
-            }
-
-            items
         } else {
             emptyList()
         }
 
-    // ============= 7. STIL =============
+    // Stil
 
     val style = SectionStyle(
         titleBold = titleBold,
@@ -230,7 +309,7 @@ fun main(args: Array<String>) {
         borderWidth = borderWidth
     )
 
-    // ============= 8. SEKCIJA =============
+    // Sekcija
 
     val section = Section(
         title = "Izvestaj",
@@ -242,7 +321,7 @@ fun main(args: Array<String>) {
         calculatedColumns = calculatedColumns
     )
 
-    // ============= 9. GENERISANJE =============
+    //Generisanje
 
     val reportBytes = renderer.generateReport(listOf(section))
 

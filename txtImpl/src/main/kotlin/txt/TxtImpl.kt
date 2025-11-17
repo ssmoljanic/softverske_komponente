@@ -6,7 +6,6 @@ import spec.ReportInterface
 class TxtImpl : ReportInterface {
 
     override val implName: String = "txt"
-    override val contentType: String = "text/plain"
     override val defaultFileExtension: String = ".txt"
     override val supportsFormatting: Boolean = false
 
@@ -17,37 +16,26 @@ class TxtImpl : ReportInterface {
         val sb = StringBuilder()
 
         sections.forEachIndexed { index, section ->
-            // razmak između sekcija (osim pre prve)
+            // razmak između sekcija
             if (index > 0) {
                 sb.appendLine()
                 sb.appendLine()
             }
 
-            // 1) primeni calculated kolone
+            // primeni calculated kolone
             val dataWithCalculated = applyCalculatedColumns(
                 data = section.data,
                 calculatedColumns = section.calculatedColumns
             )
 
-            // 2) validacija (data + summary + calculated)
-            val valid = validate(
-                data = dataWithCalculated,
-                summaryItems = section.summaryItems,
-                calculatedColumns = section.calculatedColumns
-            )
-            if (!valid) {
-                throw IllegalArgumentException(
-                    "Podaci ili summary za sekciju '${section.title ?: "bez naslova"}' nisu validni."
-                )
-            }
 
-            // 3) naslov
+            // naslov
             renderTitle(sb, section.title, section.style)
             if (!section.title.isNullOrBlank()) {
                 sb.appendLine()
             }
 
-            // 4) tabela
+            // tabela
             renderTable(
                 sb = sb,
                 data = dataWithCalculated,
@@ -56,7 +44,7 @@ class TxtImpl : ReportInterface {
                 showHeader = section.showHeader
             )
 
-            // 5) summary (ako postoji)
+            // summary (ako postoji)
             if (section.summaryItems.isNotEmpty()) {
                 sb.appendLine()
                 renderSummary(
@@ -70,7 +58,6 @@ class TxtImpl : ReportInterface {
         return sb.toString().toByteArray(Charsets.UTF_8)
     }
 
-    // ===== TITLE =====
 
     override fun renderTitle(
         sb: StringBuilder,
@@ -81,7 +68,6 @@ class TxtImpl : ReportInterface {
         sb.append(title)
     }
 
-    // ===== TABLE (stil kao na slici) =====
 
     override fun renderTable(
         sb: StringBuilder,
@@ -95,7 +81,7 @@ class TxtImpl : ReportInterface {
             return
         }
 
-        // redosled kolona (pretpostavka: LinkedHashMap)
+
         val columnNames = data.keys.toList()
         val rowCount = data.values.first().size
 
@@ -106,7 +92,7 @@ class TxtImpl : ReportInterface {
             maxOf(rowNumberHeader.length, maxRowNumLen)
         } else 0
 
-        // širine kolona = max(header, bilo koja vrednost)
+        // sirine kolona
         val columnWidths = columnNames.map { colName ->
             val headerLen = colName.length
             val maxValueLen = data[colName]!!.maxOfOrNull { it.length } ?: 0
@@ -116,10 +102,10 @@ class TxtImpl : ReportInterface {
         fun String.padRight(width: Int): String =
             if (length >= width) this else this + " ".repeat(width - length)
 
-        // dve praznine između kolona (više liči na primer)
+        // dve praznine između kolona
         val colSeparator = "  "
 
-        // ---------- HEADER ----------
+        // Header
         if (showHeader) {
             // redni broj
             if (showRowNumbers) {
@@ -137,8 +123,7 @@ class TxtImpl : ReportInterface {
             }
             sb.appendLine()
 
-            // crte ispod zaglavlja – TAČNO koliko je dug header,
-            // a ostatak do širine kolone popunjavamo razmacima
+            // crte ispod zaglavlja
             if (showRowNumbers) {
                 val dashes = "-".repeat(rowNumberHeader.length)
                 sb.append(dashes.padRight(rowNumberWidth))
@@ -157,7 +142,7 @@ class TxtImpl : ReportInterface {
             sb.appendLine()
         }
 
-        // ---------- REDOVI ----------
+        // Redovi
         for (rowIndex in 0 until rowCount) {
             if (showRowNumbers) {
                 val rowNum = (rowIndex + 1).toString()
@@ -177,7 +162,7 @@ class TxtImpl : ReportInterface {
         }
     }
 
-    // ===== SUMMARY =====
+    // Rezime
 
     override fun renderSummary(
         sb: StringBuilder,

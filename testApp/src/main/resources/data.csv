@@ -1,4 +1,13 @@
-Artikal;Cena;Kolicina
-Hleb;100;2
-Mleko;150;1
-Jaja;200;3
+Artikal;Cena;Kolicina;Kategorija;Grad;Status;NacinPlacanja
+Laptop;120000;1;Elektronika;Beograd;PLACENO;KARTICA
+Mis;1500;2;Elektronika;Beograd;PLACENO;GOTOVINA
+Tastatura;3000;1;Elektronika;Novi Sad;NA_CEKANJU;KARTICA
+Monitor;25000;1;Elektronika;Novi Sad;OTKAZANO;KARTICA
+Stolica;10000;3;Namestaj;Beograd;PLACENO;UPLATA
+Sto;20000;1;Namestaj;Nis;PLACENO;KARTICA
+Sveska;100;10;Kancelarija;Nis;PLACENO;GOTOVINA
+Olovka;100;20;Kancelarija;Subotica;NA_CEKANJU;GOTOVINA
+Fascikla;250;15;Kancelarija;Beograd;PLACENO;KARTICA
+Telefon;60000;1;Elektronika;Beograd;NA_CEKANJU;KARTICA
+Slusalice;5000;2;Elektronika;Novi Sad;PLACENO;GOTOVINA
+Lampa;1500;4;Namestaj;Nis;OTKAZANO;UPLATA

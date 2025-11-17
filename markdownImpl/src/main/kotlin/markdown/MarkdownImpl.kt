@@ -17,7 +17,6 @@ import spec.ReportInterface.SummaryCalcType
 class MarkdownImpl : ReportInterface {
 
     override val implName: String = "markdown"
-    override val contentType: String = "text/markdown"
     override val defaultFileExtension: String = ".md"
 
     // Markdown podržava formatiranje teksta.
@@ -37,31 +36,19 @@ class MarkdownImpl : ReportInterface {
                 sb.appendLine()
             }
 
-            // 1) primeni izračunate kolone
+            // primeni izračunate kolone
             val dataWithCalculated = applyCalculatedColumns(
                 data = section.data,
                 calculatedColumns = section.calculatedColumns
             )
 
-            // 2) validacija (data + summary + calculated)
-            val valid = validate(
-                data = dataWithCalculated,
-                summaryItems = section.summaryItems,
-                calculatedColumns = section.calculatedColumns
-            )
-            if (!valid) {
-                throw IllegalArgumentException(
-                    "Nevalidni podaci ili summary u sekciji '${section.title ?: "bez naslova"}'."
-                )
-            }
-
-            // 3) naslov
+            // naslov
             renderTitle(sb, section.title, section.style)
             if (!section.title.isNullOrBlank()) {
                 sb.appendLine()
             }
 
-            // 4) tabela
+            // tabela
             renderTable(
                 sb = sb,
                 data = dataWithCalculated,
@@ -70,7 +57,7 @@ class MarkdownImpl : ReportInterface {
                 showHeader = section.showHeader
             )
 
-            // 5) summary
+            // summary
             if (section.summaryItems.isNotEmpty()) {
                 sb.appendLine()
                 renderSummary(
@@ -84,7 +71,7 @@ class MarkdownImpl : ReportInterface {
         return sb.toString().toByteArray(Charsets.UTF_8)
     }
 
-    // ========== TITLE ==========
+
 
     override fun renderTitle(sb: StringBuilder, title: String?, style: SectionStyle) {
         if (title.isNullOrBlank()) return
@@ -103,12 +90,12 @@ class MarkdownImpl : ReportInterface {
             text = "<u>$text</u>"
         }
 
-        // koristimo nivo 2 heding (##)
+
         sb.append("## ")
         sb.appendLine(text)
     }
 
-    // ========== TABLE (Markdown tabela) ==========
+    // Markdown tabela
 
     override fun renderTable(
         sb: StringBuilder,
@@ -125,11 +112,11 @@ class MarkdownImpl : ReportInterface {
         val columnNames = data.keys.toList()
         val rowCount = data.values.first().size
 
-        // helper za escape | u ćelijama
+
         fun escapeCell(text: String): String =
             text.replace("|", "\\|").replace("\n", " ")
 
-        // HEADER RED
+        // HEADER
         val headerCells = mutableListOf<String>()
         if (showRowNumbers) {
             headerCells.add("#")
@@ -152,8 +139,6 @@ class MarkdownImpl : ReportInterface {
             sb.append(separator.joinToString(" | "))
             sb.appendLine(" |")
         } else {
-            // čak i kad nema "header", Markdown tabela zahteva header+separator.
-            // Možemo da generišemo prazan header za ispravan Markdown.
             val emptyHeader = headerCells.map { "" }
             sb.append("| ")
             sb.append(emptyHeader.joinToString(" | "))
@@ -184,7 +169,7 @@ class MarkdownImpl : ReportInterface {
         }
     }
 
-    // ========== SUMMARY (bullet lista) ==========
+    // SUMMARY
 
     override fun renderSummary(
         sb: StringBuilder,
@@ -247,7 +232,6 @@ class MarkdownImpl : ReportInterface {
                 }
             }
 
-            // bullet lista sa bold label-om
             sb.append("- **")
             sb.append(item.label.replace("\n", " "))
             sb.append(":** ")
